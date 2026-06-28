@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
 import ShareCard from "./ShareCard";
 import { loadCooks, loadSelectedId, saveSelectedId } from "./utils/cookLog";
-import { GW_PRO_KEY, safeGet, safeSet } from "./utils/storage";
+import { PW_PRO_KEY, safeGet, safeSet } from "./utils/storage";
 import "./shareCard.css";
 
 const THEMES = [
@@ -36,7 +35,7 @@ export default function App() {
   const [animate, setAnimate] = useState(false);
 
   // ---- entitlement (debug-toggled for now) ----
-  const [isPro, setIsPro] = useState(() => safeGet(GW_PRO_KEY) === "1");
+  const [isPro, setIsPro] = useState(() => safeGet(PW_PRO_KEY) === "1");
 
   // ---- export/share UI ----
   const [busy, setBusy] = useState(null); // "share" | "download" | null
@@ -80,7 +79,7 @@ export default function App() {
   const togglePro = () => {
     const next = !isPro;
     setIsPro(next);
-    safeSet(GW_PRO_KEY, next ? "1" : "0");
+    safeSet(PW_PRO_KEY, next ? "1" : "0");
     // when locking back down, drop any Pro-only selections to the free defaults
     if (!next) {
       if (PRO_THEMES.has(theme)) setTheme("ember");
@@ -91,6 +90,8 @@ export default function App() {
   const fileName = () => `pitwright-${cook.cut.toLowerCase().replace(/\s+/g, "-")}.png`;
 
   async function renderPNG() {
+    // html2canvas is heavy and only needed on export — load it on demand.
+    const { default: html2canvas } = await import("html2canvas");
     await document.fonts.ready;
     const card = cardRef.current;
     card.classList.add("capturing");

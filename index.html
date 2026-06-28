@@ -8,10 +8,15 @@
 
     <meta name="description" content="Turn your cook log into a share-ready card — temperature curve, probe readouts, and pitmaster credit." />
 
-    <!-- TODO: update og:image once an OG image is hosted -->
+    <meta property="og:type" content="website" />
     <meta property="og:title" content="Pitwright · Share Your Cook" />
     <meta property="og:description" content="Turn your cook log into a share-ready card — temperature curve, probe readouts, and pitmaster credit." />
-    <meta property="og:image" content="TODO: https://yourdomain.com/og-image.png" />
+    <!-- Relative path resolves against the deploy origin. Some scrapers (older Facebook)
+         want an absolute URL — set it to https://<your-domain>/og-image.png in prod. -->
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
 
     <!-- PWA - update public/manifest.json and replace icons in public/icons/ -->
     <link rel="manifest" href="/manifest.json" />

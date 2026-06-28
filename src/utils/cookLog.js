@@ -1,6 +1,6 @@
 import {
-  GW_COOKS_KEY,
-  GW_SELECTED_KEY,
+  PW_COOKS_KEY,
+  PW_SELECTED_KEY,
   safeGet,
   safeSet,
   safeGetJSON,
@@ -51,18 +51,18 @@ export const SAMPLE_COOKS = [
 
 // Load the cook log, seeding it with the samples on first run.
 export function loadCooks() {
-  const stored = safeGetJSON(GW_COOKS_KEY, null);
+  const stored = safeGetJSON(PW_COOKS_KEY, null);
   if (Array.isArray(stored) && stored.length) return stored;
-  safeSetJSON(GW_COOKS_KEY, SAMPLE_COOKS);
+  safeSetJSON(PW_COOKS_KEY, SAMPLE_COOKS);
   return SAMPLE_COOKS;
 }
 
 // Which cook is currently selected for sharing (falls back to the first).
 export function loadSelectedId(cooks) {
-  const id = safeGet(GW_SELECTED_KEY);
+  const id = safeGet(PW_SELECTED_KEY);
   return cooks.some((c) => c.id === id) ? id : cooks[0].id;
 }
 
 export function saveSelectedId(id) {
-  safeSet(GW_SELECTED_KEY, id);
+  safeSet(PW_SELECTED_KEY, id);
 }

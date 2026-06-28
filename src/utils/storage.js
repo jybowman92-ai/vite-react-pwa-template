@@ -26,6 +26,6 @@ export const safeGetJSON = (k, fallback) => {
 export const safeSetJSON = (k, v) => safeSet(k, JSON.stringify(v));
 
 // localStorage key constants, kept here so they're never typo'd.
-export const GW_COOKS_KEY    = "gw_cooks";          // the cook log (array of entries)
-export const GW_SELECTED_KEY = "gw_selected_cook";  // id of the cook being shared
-export const GW_PRO_KEY      = "gw_pro";            // "1" when Pro is unlocked (debug)
+export const PW_COOKS_KEY    = "pw_cooks";          // the cook log (array of entries)
+export const PW_SELECTED_KEY = "pw_selected_cook";  // id of the cook being shared
+export const PW_PRO_KEY      = "pw_pro";            // "1" when Pro is unlocked (debug)
