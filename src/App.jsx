@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import ShareCard from "./ShareCard";
-import { cook } from "./utils/cook";
+import { loadCooks, loadSelectedId, saveSelectedId } from "./utils/cookLog";
+import { GW_PRO_KEY, safeGet, safeSet } from "./utils/storage";
 import "./shareCard.css";
 
 const THEMES = [
@@ -12,29 +13,34 @@ const THEMES = [
 ];
 
 const FORMATS = [
-  { id: "portrait", label: "Feed" },
-  { id: "square", label: "Square" },
-  { id: "story", label: "Story" },
+  { id: "portrait", label: "Feed", pro: false },
+  { id: "square", label: "Square", pro: true },
+  { id: "story", label: "Story", pro: true },
 ];
 
-const HINT_DEFAULT = (
-  <>
-    High-resolution image &middot; <b>themes &amp; formats are Pro</b>
-  </>
-);
-
-const fileName = () => `grillwright-${cook.cut.toLowerCase().replace(/\s+/g, "-")}.png`;
+const PRO_THEMES = new Set(THEMES.filter((t) => t.pro).map((t) => t.id));
+const PRO_FORMATS = new Set(FORMATS.filter((f) => f.pro).map((f) => f.id));
 
 export default function App() {
   const cardRef = useRef(null);
 
+  // ---- cook log ----
+  const [cooks] = useState(loadCooks);
+  const [cookId, setCookId] = useState(() => loadSelectedId(cooks));
+  const cook = cooks.find((c) => c.id === cookId) ?? cooks[0];
+
+  // ---- card options ----
   const [theme, setTheme] = useState("ember");
   const [format, setFormat] = useState("portrait");
   const [hero, setHero] = useState("curve");
   const [animate, setAnimate] = useState(false);
 
+  // ---- entitlement (debug-toggled for now) ----
+  const [isPro, setIsPro] = useState(() => safeGet(GW_PRO_KEY) === "1");
+
+  // ---- export/share UI ----
   const [busy, setBusy] = useState(null); // "share" | "download" | null
-  const [hint, setHint] = useState(HINT_DEFAULT);
+  const [hint, setHint] = useState(null); // null = show the default line
   const [hintErr, setHintErr] = useState(false);
   const hintTimer = useRef(null);
 
@@ -52,10 +58,37 @@ export default function App() {
     setHint(msg);
     setHintErr(err);
     hintTimer.current = setTimeout(() => {
-      setHint(HINT_DEFAULT);
+      setHint(null);
       setHintErr(false);
     }, 3200);
   };
+
+  // ---- selection handlers (gate Pro-only options) ----
+  const selectCook = (id) => {
+    setCookId(id);
+    saveSelectedId(id);
+  };
+  const selectTheme = (id) => {
+    if (!isPro && PRO_THEMES.has(id)) return flashHint("That card style is Pro — flip on Pro (debug) to use it.");
+    setTheme(id);
+  };
+  const selectFormat = (id) => {
+    if (!isPro && PRO_FORMATS.has(id)) return flashHint("That format is Pro — flip on Pro (debug) to use it.");
+    setFormat(id);
+  };
+
+  const togglePro = () => {
+    const next = !isPro;
+    setIsPro(next);
+    safeSet(GW_PRO_KEY, next ? "1" : "0");
+    // when locking back down, drop any Pro-only selections to the free defaults
+    if (!next) {
+      if (PRO_THEMES.has(theme)) setTheme("ember");
+      if (PRO_FORMATS.has(format)) setFormat("portrait");
+    }
+  };
+
+  const fileName = () => `grillwright-${cook.cut.toLowerCase().replace(/\s+/g, "-")}.png`;
 
   async function renderPNG() {
     await document.fonts.ready;
@@ -138,30 +171,63 @@ export default function App() {
               <span className="sub">Grillwright · Pro</span>
             </h1>
           </div>
+          <button
+            className="debug-pro"
+            data-on={isPro}
+            onClick={togglePro}
+            title="Debug: unlock Pro features"
+            aria-pressed={isPro}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {isPro ? (
+                <path d="M7 11V7a5 5 0 0 1 10 0v4M5 11h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
+              ) : (
+                <path d="M7 11V7a5 5 0 0 1 9.9-1M5 11h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
+              )}
+            </svg>
+            Pro {isPro ? "On" : "Off"}
+          </button>
         </header>
 
         <section className="stage">
-          <ShareCard ref={cardRef} cook={cook} theme={theme} format={format} hero={hero} animate={animate} />
+          <ShareCard key={cook.id} ref={cardRef} cook={cook} theme={theme} format={format} hero={hero} animate={animate} />
         </section>
 
         <div className="panel">
           <div>
             <div className="ctl-label" style={{ marginBottom: 10 }}>
+              Sharing cook
+            </div>
+            <select className="cook-select" value={cook.id} onChange={(e) => selectCook(e.target.value)}>
+              {cooks.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.cut} · {c.cookTimeLong}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <div className="ctl-label" style={{ marginBottom: 10 }}>
               Card style
             </div>
             <div className="themes">
-              {THEMES.map((t) => (
-                <button
-                  key={t.id}
-                  className="swatch"
-                  aria-pressed={theme === t.id}
-                  onClick={() => setTheme(t.id)}
-                >
-                  <span className="dab" style={{ background: t.dab }} />
-                  <span className="nm">{t.name}</span>
-                  {t.pro && <span className="lock">PRO</span>}
-                </button>
-              ))}
+              {THEMES.map((t) => {
+                const locked = t.pro && !isPro;
+                return (
+                  <button
+                    key={t.id}
+                    className="swatch"
+                    aria-pressed={theme === t.id}
+                    data-locked={locked}
+                    onClick={() => selectTheme(t.id)}
+                  >
+                    <span className="dab" style={{ background: t.dab }} />
+                    <span className="nm">{t.name}</span>
+                    {locked && <span className="lock">PRO</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -171,11 +237,15 @@ export default function App() {
                 Format
               </div>
               <div className="seg" role="group" aria-label="Format">
-                {FORMATS.map((f) => (
-                  <button key={f.id} aria-pressed={format === f.id} onClick={() => setFormat(f.id)}>
-                    {f.label}
-                  </button>
-                ))}
+                {FORMATS.map((f) => {
+                  const locked = f.pro && !isPro;
+                  return (
+                    <button key={f.id} aria-pressed={format === f.id} data-locked={locked} onClick={() => selectFormat(f.id)}>
+                      {f.label}
+                      {locked && <span className="seg-lock">PRO</span>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
@@ -227,7 +297,17 @@ export default function App() {
             <span>{busy === "download" ? "Rendering…" : "Download PNG"}</span>
           </button>
           <p className="hint" style={hintErr ? { color: "#ff8a5c" } : undefined}>
-            {hint}
+            {hint != null ? (
+              hint
+            ) : isPro ? (
+              <>
+                High-resolution image &middot; <b>Pro unlocked (debug)</b>
+              </>
+            ) : (
+              <>
+                High-resolution image &middot; <b>themes &amp; formats are Pro</b>
+              </>
+            )}
           </p>
         </div>
       </div>

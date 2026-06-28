@@ -1,23 +1,3 @@
-// ============================================================
-//  COOK DATA  ── map this to a real cook-log entry
-// ============================================================
-export const cook = {
-  cut: "Brisket",
-  category: "Beef",
-  wood: "Post Oak",
-  descriptor: "Packer · 14.2 lb · 225°F pit",
-  cookTime: "14:20", // hh:mm
-  cookTimeLong: "14h 20m low & slow",
-  pulledTemp: 203, // °F
-  woodShort: "Oak",
-  rating: 5, // out of 5
-  achievement: "Stall Conquered",
-  pitmaster: "Jeremy",
-  date: "JUN 2026",
-  // sampled internal-temp readings across the cook (the real probe log)
-  curve: [58, 86, 118, 140, 151, 154, 155, 156, 158, 164, 176, 190, 203],
-};
-
 // ------------------------------------------------------------
 //  Build the temperature curve geometry from the probe log.
 //  Returns SVG path strings + label/end-point coordinates,

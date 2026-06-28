@@ -17,7 +17,15 @@ export const safeSet = (k, v) => {
 };
 export const safeRemove = (k) => { try { localStorage.removeItem(k); } catch {} };
 
-// TODO: define your localStorage key constants here so they're never typo'd.
-// Example:
-// export const SETTINGS_KEY = "myapp_settings";
-// export const LOG_KEY      = "myapp_log";
+// JSON-aware wrappers — never throw, fall back on parse errors.
+export const safeGetJSON = (k, fallback) => {
+  const raw = safeGet(k);
+  if (raw == null) return fallback;
+  try { return JSON.parse(raw); } catch { return fallback; }
+};
+export const safeSetJSON = (k, v) => safeSet(k, JSON.stringify(v));
+
+// localStorage key constants, kept here so they're never typo'd.
+export const GW_COOKS_KEY    = "gw_cooks";          // the cook log (array of entries)
+export const GW_SELECTED_KEY = "gw_selected_cook";  // id of the cook being shared
+export const GW_PRO_KEY      = "gw_pro";            // "1" when Pro is unlocked (debug)

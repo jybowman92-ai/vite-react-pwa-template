@@ -107,6 +107,14 @@
 }
 .gw-app .top .sub{display:block;font-family:inherit;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--muted-2);margin-top:3px;text-transform:uppercase}
 
+/* ---- debug Pro toggle (header, right-aligned) ---- */
+.debug-pro{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  font-family:"Space Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.1em;
+  color:var(--muted);background:var(--bg-chip);border:1px solid var(--line);
+  border-radius:var(--r-pill);padding:7px 12px;transition:color .18s var(--ease),border-color .18s var(--ease),background .18s var(--ease)}
+.debug-pro svg{width:13px;height:13px}
+.debug-pro[data-on="true"]{color:var(--gold);border-color:var(--gold);background:rgba(232,181,98,.10)}
+
 /* ---- stage holds the card ---- */
 .stage{display:flex;justify-content:center;padding:6px 0 2px}
 
@@ -238,6 +246,17 @@
   padding:var(--s2);display:flex;flex-direction:column;gap:var(--s2)}
 .ctl-label{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2)}
 
+/* ---- cook selector ---- */
+.cook-select{width:100%;min-height:46px;appearance:none;-webkit-appearance:none;
+  background:var(--bg-chip);border:1px solid var(--line);border-radius:var(--r-md);
+  color:var(--text);font-size:14px;font-weight:600;letter-spacing:.01em;
+  padding:0 38px 0 14px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239b8f80' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;
+  transition:border-color .18s var(--ease)}
+.cook-select:hover{border-color:var(--line-strong)}
+.cook-select option{background:var(--bg-raise);color:var(--text)}
+
 .themes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .swatch{position:relative;display:flex;align-items:center;gap:10px;
   background:var(--bg-chip);border:1px solid var(--line);border-radius:var(--r-md);
@@ -256,6 +275,12 @@
 .seg button svg{width:15px;height:15px}
 .seg button[aria-pressed="true"]{background:linear-gradient(160deg,#ff7a25,#d23f08);color:#fff;
   box-shadow:0 4px 12px -4px rgba(210,63,8,.6)}
+.seg button[data-locked="true"]{color:var(--muted-2)}
+.seg-lock{font-family:"Space Mono",monospace;font-size:8px;font-weight:700;letter-spacing:.1em;
+  color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:1px 4px;opacity:.8}
+
+/* a locked swatch reads as a teaser, not a dead control */
+.swatch[data-locked="true"] .nm{color:var(--muted)}
 
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
