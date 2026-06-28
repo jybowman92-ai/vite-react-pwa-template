@@ -1,5 +1,5 @@
 /* ============================================================
-   GRILLWRIGHT · SHARE CARD
+   PITWRIGHT · SHARE CARD
    App-chrome tokens + body styling are scoped to .gw-app so they
    don't clash with the template's global tokens in styles.css.
    The card's own theme tokens live on .card[data-theme].

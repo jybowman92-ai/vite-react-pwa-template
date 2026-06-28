@@ -88,7 +88,7 @@ export default function App() {
     }
   };
 
-  const fileName = () => `grillwright-${cook.cut.toLowerCase().replace(/\s+/g, "-")}.png`;
+  const fileName = () => `pitwright-${cook.cut.toLowerCase().replace(/\s+/g, "-")}.png`;
 
   async function renderPNG() {
     await document.fonts.ready;
@@ -135,7 +135,7 @@ export default function App() {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: "My cook on Grillwright",
+          title: "My cook on Pitwright",
           text: `${cook.cut} · ${cook.cookTimeLong} 🔥`,
         });
         flashHint("Shared.");
@@ -168,7 +168,7 @@ export default function App() {
           <div>
             <h1>
               Share Your Cook
-              <span className="sub">Grillwright · Pro</span>
+              <span className="sub">Pitwright · Pro</span>
             </h1>
           </div>
           <button

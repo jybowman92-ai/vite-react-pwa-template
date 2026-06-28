@@ -63,7 +63,7 @@ const ShareCard = forwardRef(function ShareCard({ cook, theme, format, hero, ani
         <div className="row-brand">
           <div className="wordmark">
             <WordmarkDot />
-            <span className="name">Grillwright</span>
+            <span className="name">Pitwright</span>
           </div>
           <span className="tag-pro">PRO</span>
         </div>

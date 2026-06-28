@@ -1,6 +1,6 @@
 {
-  "name": "Grillwright · Share Your Cook",
-  "short_name": "Grillwright",
+  "name": "Pitwright · Share Your Cook",
+  "short_name": "Pitwright",
   "description": "Turn your cook log into a share-ready card.",
   "start_url": "/",
   "display": "standalone",
