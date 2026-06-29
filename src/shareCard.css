@@ -101,11 +101,12 @@
   box-shadow:0 4px 14px rgba(210,63,8,.45);
 }
 .brandmark svg{width:17px;height:17px}
+.top-brand{flex:1;min-width:0}
 .gw-app .top h1{
-  font-family:"Oswald",sans-serif;font-weight:600;font-size:18px;
-  letter-spacing:.04em;text-transform:uppercase;line-height:1;
+  font-family:"Fraunces","Oswald",serif;font-weight:700;font-size:19px;font-style:italic;
+  letter-spacing:-.01em;line-height:1.05;color:var(--text);
 }
-.gw-app .top .sub{display:block;font-family:inherit;font-size:11px;font-weight:400;letter-spacing:.16em;color:var(--muted-2);margin-top:3px;text-transform:uppercase}
+.gw-app .top .sub{display:block;font-family:"Space Mono",monospace;font-size:10px;font-weight:400;letter-spacing:.22em;color:var(--muted-2);margin-top:3px;text-transform:uppercase}
 
 /* ---- debug Pro toggle (header, right-aligned) ---- */
 .debug-pro{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
@@ -115,8 +116,23 @@
 .debug-pro svg{width:13px;height:13px}
 .debug-pro[data-on="true"]{color:var(--gold);border-color:var(--gold);background:rgba(232,181,98,.10)}
 
-/* ---- stage holds the card ---- */
-.stage{display:flex;justify-content:center;padding:6px 0 2px}
+/* ---- stage: showcase the card ---- */
+.stage{
+  display:flex;justify-content:center;
+  padding:4px 0 8px;
+  position:relative;
+}
+/* ambient glow behind the card */
+.stage::before{
+  content:"";
+  position:absolute;inset:-20px;
+  background:radial-gradient(60% 70% at 50% 40%, rgba(255,106,26,.13) 0%, transparent 70%);
+  pointer-events:none;
+}
+.stage-inner{
+  position:relative;z-index:1;
+  filter:drop-shadow(0 32px 60px rgba(0,0,0,.7));
+}
 
 /* ============================================================
    THE SHARE CARD
@@ -296,6 +312,26 @@
 .btn--primary:hover{filter:brightness(1.05)}
 .btn--ghost{background:var(--bg-chip);border:1px solid var(--line-strong);color:var(--text)}
 .btn--ghost:hover{border-color:var(--ember)}
+
+/* ---- Pit Intelligence toggle button ---- */
+.btn--intel{
+  background:var(--bg-raise);border:1px solid var(--line-strong);color:var(--muted);
+  font-size:14px;position:relative;
+  transition:border-color .18s var(--ease),color .18s var(--ease),background .18s var(--ease);
+}
+.btn--intel:hover{border-color:var(--ember);color:var(--text)}
+.btn--intel.active{
+  border-color:var(--ember);color:var(--text);
+  background:rgba(255,106,26,.07);
+}
+.btn-pro-badge{
+  font-family:"Space Mono",monospace;font-size:9px;font-weight:700;letter-spacing:.12em;
+  color:var(--gold);border:1px solid var(--gold);border-radius:999px;padding:2px 6px;
+  margin-left:2px;opacity:.9;
+}
+.btn-chevron{margin-left:auto;display:flex;align-items:center;opacity:.5}
+.btn-chevron svg{width:14px;height:14px}
+
 .btn[disabled]{opacity:.55;pointer-events:none}
 .btn .spin{width:17px;height:17px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
   border-radius:50%;animation:gw-spin .7s linear infinite}
@@ -303,6 +339,85 @@
 
 .hint{font-size:11.5px;color:var(--muted-2);text-align:center;line-height:1.5;letter-spacing:.01em}
 .hint b{color:var(--muted)}
+
+/* ============================================================
+   PIT INTELLIGENCE PANEL
+   ============================================================ */
+.insights-panel{
+  display:grid;
+  grid-template-rows:0fr;
+  opacity:0;
+  background:var(--bg-raise);
+  border:1px solid transparent;
+  border-radius:var(--r-lg);
+  transition:grid-template-rows .32s var(--ease),opacity .22s var(--ease),
+             border-color .22s var(--ease);
+}
+.insights-panel.open{
+  grid-template-rows:1fr;
+  opacity:1;
+  border-color:var(--line);
+}
+/* single inner child that holds all content, collapses cleanly */
+.insights-inner{
+  min-height:0;overflow:hidden;
+  padding:var(--s2);
+}
+
+.insights-hd{
+  display:flex;align-items:center;gap:8px;
+  padding-bottom:var(--s2);
+  border-bottom:1px solid var(--line);
+  margin-bottom:var(--s2);
+}
+.insights-title{
+  display:flex;align-items:center;gap:8px;
+  font-family:"Fraunces","Oswald",serif;font-weight:600;font-style:italic;
+  font-size:16px;color:var(--text);letter-spacing:-.01em;flex:1;
+}
+.insights-title svg{width:16px;height:16px;color:var(--ember)}
+.tag-pro-sm{
+  font-family:"Space Mono",monospace;font-size:9px;font-weight:700;
+  letter-spacing:.14em;color:var(--gold);
+  border:1px solid var(--gold);border-radius:999px;padding:2px 6px;opacity:.85;
+}
+
+/* 2×2 grid of data cards */
+.insights-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-bottom:var(--s2);
+}
+.insight-card{
+  background:var(--bg-chip);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:12px 14px;display:flex;flex-direction:column;gap:4px;
+}
+.insight-label{
+  font-family:"Space Mono",monospace;font-size:9px;font-weight:700;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2);
+}
+.insight-value{
+  font-family:"Space Mono",monospace;font-weight:700;font-size:22px;
+  color:var(--text);line-height:1;letter-spacing:-.01em;
+}
+.insight-value small{font-size:13px;font-weight:400;color:var(--muted);margin-left:1px}
+.insight-value--pull{font-size:16px;letter-spacing:-.005em;padding-top:2px}
+.insight-detail{font-size:11px;color:var(--muted-2);line-height:1.4;margin-top:2px}
+
+/* grade color accent on the pull card */
+.insight-card[data-grade="perfect"] .insight-value--pull{color:var(--ember)}
+.insight-card[data-grade="close"]   .insight-value--pull{color:var(--gold)}
+.insight-card[data-grade="off"]     .insight-value--pull{color:#f87171}
+
+/* ---- Pro lock overlay ---- */
+.insights-lock{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(232,181,98,.06);border:1px solid rgba(232,181,98,.18);
+  border-radius:var(--r-md);padding:14px 16px;
+  margin-top:2px;
+}
+.insights-lock svg{width:20px;height:20px;color:var(--gold);flex:none}
+.insights-lock strong{display:block;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.02em}
+.insights-lock span{display:block;font-size:11px;color:var(--muted-2);margin-top:2px}
 
 /* curve draw-in */
 .curve-line{stroke-dasharray:1000;stroke-dashoffset:0}
