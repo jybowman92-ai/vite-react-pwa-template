@@ -5,45 +5,110 @@ import { PW_PRO_KEY, safeGet, safeSet } from "./utils/storage";
 import "./shareCard.css";
 
 const THEMES = [
-  { id: "ember", name: "Ember Pit", dab: "linear-gradient(160deg,#2a1c12,#ff7a25)", pro: false },
-  { id: "ticket", name: "Butcher's Ticket", dab: "linear-gradient(160deg,#e7d8bd,#a8331f)", pro: true },
-  { id: "midnight", name: "Midnight Probe", dab: "linear-gradient(160deg,#13202b,#7fd0ff)", pro: true },
-  { id: "gold", name: "Competition Gold", dab: "linear-gradient(160deg,#20180b,#e8b562)", pro: true },
+  { id: "ember",    name: "Ember Pit",       dab: "linear-gradient(160deg,#2a1c12,#ff7a25)", pro: false },
+  { id: "ticket",   name: "Butcher's Ticket", dab: "linear-gradient(160deg,#e7d8bd,#a8331f)", pro: true  },
+  { id: "midnight", name: "Midnight Probe",   dab: "linear-gradient(160deg,#13202b,#7fd0ff)", pro: true  },
+  { id: "gold",     name: "Competition Gold", dab: "linear-gradient(160deg,#20180b,#e8b562)", pro: true  },
 ];
 
 const FORMATS = [
-  { id: "portrait", label: "Feed", pro: false },
-  { id: "square", label: "Square", pro: true },
-  { id: "story", label: "Story", pro: true },
+  { id: "portrait", label: "Feed",   pro: false },
+  { id: "square",   label: "Square", pro: true  },
+  { id: "story",    label: "Story",  pro: true  },
 ];
 
-const PRO_THEMES = new Set(THEMES.filter((t) => t.pro).map((t) => t.id));
+const PRO_THEMES  = new Set(THEMES.filter((t) => t.pro).map((t) => t.id));
 const PRO_FORMATS = new Set(FORMATS.filter((f) => f.pro).map((f) => f.id));
+
+// ---- derive analytics from a cook's temperature curve ----
+function deriveCookInsights(cook) {
+  const { curve, pulledTemp, category } = cook;
+  const n = curve.length;
+
+  // Stall: longest near-flat plateau (≤3°F change per step)
+  let bStart = 0, bLen = 0, cStart = 0, cLen = 0;
+  for (let i = 1; i < n; i++) {
+    if (Math.abs(curve[i] - curve[i - 1]) <= 3) {
+      if (cLen === 0) cStart = i - 1;
+      cLen++;
+    } else {
+      if (cLen > bLen) { bLen = cLen; bStart = cStart; }
+      cLen = 0;
+    }
+  }
+  if (cLen > bLen) { bLen = cLen; bStart = cStart; }
+
+  const stallTemp = curve[Math.round(bStart + bLen / 2)] ?? curve[Math.floor(n / 2)];
+  const stallPct  = n > 0 ? Math.round((bLen / n) * 100) : 0;
+
+  // Smoke window: stages below 150°F — prime smoke absorption zone
+  const smkPct = Math.round((curve.filter((t) => t < 150).length / n) * 100);
+
+  // Post-stall recovery (avg °F rise per segment)
+  const after    = curve.slice(bStart + bLen);
+  const recovery = after.length > 1
+    ? ((after[after.length - 1] - after[0]) / after.length).toFixed(1)
+    : null;
+
+  // Pull precision vs. category ideal
+  const IDEAL   = { Beef: 203, Pork: 198, Chicken: 165, Poultry: 165 };
+  const ideal   = IDEAL[category] ?? 200;
+  const pullDiff = pulledTemp - ideal;
+
+  return { stallTemp, stallPct, smkPct, recovery, pullDiff, ideal };
+}
+
+// ---- small SVG icons used in the chrome ----
+function IconAnalytics() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12h4l3-9 4 18 3-9h4" />
+    </svg>
+  );
+}
+function IconLock() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+function IconChevron({ up }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d={up ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
+    </svg>
+  );
+}
 
 export default function App() {
   const cardRef = useRef(null);
 
   // ---- cook log ----
-  const [cooks] = useState(loadCooks);
+  const [cooks]  = useState(loadCooks);
   const [cookId, setCookId] = useState(() => loadSelectedId(cooks));
   const cook = cooks.find((c) => c.id === cookId) ?? cooks[0];
 
   // ---- card options ----
-  const [theme, setTheme] = useState("ember");
-  const [format, setFormat] = useState("portrait");
-  const [hero, setHero] = useState("curve");
+  const [theme,   setTheme]   = useState("ember");
+  const [format,  setFormat]  = useState("portrait");
+  const [hero,    setHero]    = useState("curve");
   const [animate, setAnimate] = useState(false);
 
-  // ---- entitlement (debug-toggled for now) ----
+  // ---- entitlement ----
   const [isPro, setIsPro] = useState(() => safeGet(PW_PRO_KEY) === "1");
 
+  // ---- insights panel ----
+  const [showInsights, setShowInsights] = useState(false);
+  const insights = deriveCookInsights(cook);
+
   // ---- export/share UI ----
-  const [busy, setBusy] = useState(null); // "share" | "download" | null
-  const [hint, setHint] = useState(null); // null = show the default line
+  const [busy,    setBusy]    = useState(null); // "share" | "download" | null
+  const [hint,    setHint]    = useState(null);
   const [hintErr, setHintErr] = useState(false);
   const hintTimer = useRef(null);
 
-  // play the curve draw-in once on mount, unless reduced motion is requested
   useEffect(() => {
     if (!matchMedia("(prefers-reduced-motion:reduce)").matches) {
       requestAnimationFrame(() => setAnimate(true));
@@ -56,33 +121,31 @@ export default function App() {
     clearTimeout(hintTimer.current);
     setHint(msg);
     setHintErr(err);
-    hintTimer.current = setTimeout(() => {
-      setHint(null);
-      setHintErr(false);
-    }, 3200);
+    hintTimer.current = setTimeout(() => { setHint(null); setHintErr(false); }, 3200);
   };
 
-  // ---- selection handlers (gate Pro-only options) ----
-  const selectCook = (id) => {
-    setCookId(id);
-    saveSelectedId(id);
-  };
+  const selectCook = (id) => { setCookId(id); saveSelectedId(id); };
+
   const selectTheme = (id) => {
-    if (!isPro && PRO_THEMES.has(id)) return flashHint("That card style is Pro — flip on Pro (debug) to use it.");
+    if (!isPro && PRO_THEMES.has(id)) return flashHint("That card style is Pro — flip on Pro to unlock it.");
     setTheme(id);
   };
+
   const selectFormat = (id) => {
-    if (!isPro && PRO_FORMATS.has(id)) return flashHint("That format is Pro — flip on Pro (debug) to use it.");
+    if (!isPro && PRO_FORMATS.has(id)) return flashHint("That format is Pro — flip on Pro to unlock it.");
     setFormat(id);
+  };
+
+  const handleInsightsClick = () => {
+    setShowInsights((v) => !v);
   };
 
   const togglePro = () => {
     const next = !isPro;
     setIsPro(next);
     safeSet(PW_PRO_KEY, next ? "1" : "0");
-    // when locking back down, drop any Pro-only selections to the free defaults
     if (!next) {
-      if (PRO_THEMES.has(theme)) setTheme("ember");
+      if (PRO_THEMES.has(theme))   setTheme("ember");
       if (PRO_FORMATS.has(format)) setFormat("portrait");
     }
   };
@@ -90,10 +153,9 @@ export default function App() {
   const fileName = () => `pitwright-${cook.cut.toLowerCase().replace(/\s+/g, "-")}.png`;
 
   async function renderPNG() {
-    // html2canvas is heavy and only needed on export — load it on demand.
     const { default: html2canvas } = await import("html2canvas");
     await document.fonts.ready;
-    const card = cardRef.current;
+    const card  = cardRef.current;
     card.classList.add("capturing");
     const scale = Math.min(3, 1200 / card.clientWidth);
     try {
@@ -114,15 +176,15 @@ export default function App() {
     setBusy("download");
     try {
       const blob = await renderPNG();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
       a.download = fileName();
       a.click();
       URL.revokeObjectURL(url);
       flashHint("Saved to your downloads.");
     } catch {
-      flashHint("Couldn’t render the image — try again.", true);
+      flashHint("Couldn't render the image — try again.", true);
     } finally {
       setBusy(null);
     }
@@ -134,31 +196,37 @@ export default function App() {
       const blob = await renderPNG();
       const file = new File([blob], fileName(), { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: "My cook on Pitwright",
-          text: `${cook.cut} · ${cook.cookTimeLong} 🔥`,
-        });
+        await navigator.share({ files: [file], title: "My cook on Pitwright", text: `${cook.cut} · ${cook.cookTimeLong} 🔥` });
         flashHint("Shared.");
       } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
         a.download = fileName();
         a.click();
         URL.revokeObjectURL(url);
-        flashHint("Sharing isn’t supported here — saved the image instead.");
+        flashHint("Sharing isn't supported here — saved the image instead.");
       }
     } catch (err) {
-      if (!(err && err.name === "AbortError")) flashHint("Couldn’t share — try again.", true);
+      if (!(err && err.name === "AbortError")) flashHint("Couldn't share — try again.", true);
     } finally {
       setBusy(null);
     }
   }
 
+  // ---- pull precision label ----
+  const pullLabel = insights.pullDiff === 0
+    ? "Dialed In"
+    : insights.pullDiff > 0
+      ? `+${insights.pullDiff}°F over`
+      : `${insights.pullDiff}°F under`;
+  const pullGrade = Math.abs(insights.pullDiff) <= 2 ? "perfect" : Math.abs(insights.pullDiff) <= 5 ? "close" : "off";
+
   return (
     <div className="gw-app">
       <div className="app">
+
+        {/* ---- header ---- */}
         <header className="top">
           <span className="brandmark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -166,11 +234,9 @@ export default function App() {
               <path d="M8 14c-1.5 1.5-2 3.5-1 5.5C8.2 21.7 10 22 12 22c3.3 0 6-2.2 6-5.5 0-2-1-3.5-2-4.5" />
             </svg>
           </span>
-          <div>
-            <h1>
-              Share Your Cook
-              <span className="sub">Pitwright · Pro</span>
-            </h1>
+          <div className="top-brand">
+            <h1>Share Your Cook</h1>
+            <span className="sub">Pitwright</span>
           </div>
           <button
             className="debug-pro"
@@ -179,39 +245,47 @@ export default function App() {
             title="Debug: unlock Pro features"
             aria-pressed={isPro}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              {isPro ? (
+            {isPro ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 11V7a5 5 0 0 1 10 0v4M5 11h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
-              ) : (
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 11V7a5 5 0 0 1 9.9-1M5 11h14v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
-              )}
-            </svg>
+              </svg>
+            )}
             Pro {isPro ? "On" : "Off"}
           </button>
         </header>
 
+        {/* ---- share card showcase ---- */}
         <section className="stage">
-          <ShareCard key={cook.id} ref={cardRef} cook={cook} theme={theme} format={format} hero={hero} animate={animate} />
+          <div className="stage-inner">
+            <ShareCard
+              key={cook.id}
+              ref={cardRef}
+              cook={cook}
+              theme={theme}
+              format={format}
+              hero={hero}
+              animate={animate}
+            />
+          </div>
         </section>
 
+        {/* ---- controls ---- */}
         <div className="panel">
           <div>
-            <div className="ctl-label" style={{ marginBottom: 10 }}>
-              Sharing cook
-            </div>
+            <div className="ctl-label" style={{ marginBottom: 10 }}>Sharing cook</div>
             <select className="cook-select" value={cook.id} onChange={(e) => selectCook(e.target.value)}>
               {cooks.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.cut} · {c.cookTimeLong}
-                </option>
+                <option key={c.id} value={c.id}>{c.cut} · {c.cookTimeLong}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <div className="ctl-label" style={{ marginBottom: 10 }}>
-              Card style
-            </div>
+            <div className="ctl-label" style={{ marginBottom: 10 }}>Card style</div>
             <div className="themes">
               {THEMES.map((t) => {
                 const locked = t.pro && !isPro;
@@ -234,9 +308,7 @@ export default function App() {
 
           <div className="two">
             <div>
-              <div className="ctl-label" style={{ marginBottom: 10 }}>
-                Format
-              </div>
+              <div className="ctl-label" style={{ marginBottom: 10 }}>Format</div>
               <div className="seg" role="group" aria-label="Format">
                 {FORMATS.map((f) => {
                   const locked = f.pro && !isPro;
@@ -250,9 +322,7 @@ export default function App() {
               </div>
             </div>
             <div>
-              <div className="ctl-label" style={{ marginBottom: 10 }}>
-                Hero
-              </div>
+              <div className="ctl-label" style={{ marginBottom: 10 }}>Hero</div>
               <div className="seg" role="group" aria-label="Hero">
                 <button aria-pressed={hero === "curve"} onClick={() => setHero("curve")}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -272,45 +342,98 @@ export default function App() {
           </div>
         </div>
 
+        {/* ---- actions ---- */}
         <div className="actions">
           <button className="btn btn--primary" disabled={busy !== null} onClick={handleShare}>
-            {busy === "share" ? (
-              <span className="spin" />
-            ) : (
+            {busy === "share" ? <span className="spin" /> : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 12v8h16v-8" />
-                <path d="M12 16V4" />
-                <path d="M8 8l4-4 4 4" />
+                <path d="M4 12v8h16v-8" /><path d="M12 16V4" /><path d="M8 8l4-4 4 4" />
               </svg>
             )}
             <span>{busy === "share" ? "Rendering…" : "Share cook"}</span>
           </button>
+
           <button className="btn btn--ghost" disabled={busy !== null} onClick={handleDownload}>
-            {busy === "download" ? (
-              <span className="spin" />
-            ) : (
+            {busy === "download" ? <span className="spin" /> : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 16v4h16v-4" />
-                <path d="M12 4v12" />
-                <path d="M8 12l4 4 4-4" />
+                <path d="M4 16v4h16v-4" /><path d="M12 4v12" /><path d="M8 12l4 4 4-4" />
               </svg>
             )}
             <span>{busy === "download" ? "Rendering…" : "Download PNG"}</span>
           </button>
+
+          <button
+            className={`btn btn--intel${showInsights ? " active" : ""}`}
+            onClick={handleInsightsClick}
+            aria-expanded={showInsights}
+          >
+            <IconAnalytics />
+            <span>Pit Intelligence</span>
+            {!isPro && <span className="btn-pro-badge">PRO</span>}
+            <span className="btn-chevron"><IconChevron up={showInsights} /></span>
+          </button>
+
           <p className="hint" style={hintErr ? { color: "#ff8a5c" } : undefined}>
-            {hint != null ? (
-              hint
-            ) : isPro ? (
-              <>
-                High-resolution image &middot; <b>Pro unlocked (debug)</b>
-              </>
-            ) : (
-              <>
-                High-resolution image &middot; <b>themes &amp; formats are Pro</b>
-              </>
-            )}
+            {hint != null ? hint : isPro
+              ? <>High-resolution image &middot; <b>Pro unlocked</b></>
+              : <>High-resolution image &middot; <b>themes &amp; formats are Pro</b></>}
           </p>
         </div>
+
+        {/* ---- pit intelligence panel ---- */}
+        <div className={`insights-panel${showInsights ? " open" : ""}`} aria-hidden={!showInsights}>
+         <div className="insights-inner">
+          <div className="insights-hd">
+            <div className="insights-title">
+              <IconAnalytics />
+              Pit Intelligence
+            </div>
+            <span className="tag-pro-sm">PRO</span>
+          </div>
+
+          <div className="insights-grid">
+            <div className="insight-card">
+              <div className="insight-label">Stall Temp</div>
+              <div className="insight-value">{insights.stallTemp}°<small>F</small></div>
+              <div className="insight-detail">
+                {insights.stallPct}% of cook &middot; {insights.stallPct >= 20 ? "Conquered" : "Minimal stall"}
+              </div>
+            </div>
+
+            <div className="insight-card">
+              <div className="insight-label">Smoke Window</div>
+              <div className="insight-value">{insights.smkPct}%</div>
+              <div className="insight-detail">below 150°F · prime ring zone</div>
+            </div>
+
+            <div className="insight-card">
+              <div className="insight-label">Recovery Rate</div>
+              <div className="insight-value">
+                {insights.recovery != null ? `+${insights.recovery}°` : "—"}
+                {insights.recovery != null && <small>/seg</small>}
+              </div>
+              <div className="insight-detail">post-stall climb</div>
+            </div>
+
+            <div className="insight-card" data-grade={pullGrade}>
+              <div className="insight-label">Pull Precision</div>
+              <div className="insight-value insight-value--pull">{pullLabel}</div>
+              <div className="insight-detail">target {insights.ideal}°F</div>
+            </div>
+          </div>
+
+          {!isPro && (
+            <div className="insights-lock">
+              <IconLock />
+              <div>
+                <strong>Unlock with Pitwright Pro</strong>
+                <span>Full analytics on every cook</span>
+              </div>
+            </div>
+          )}
+         </div>{/* /insights-inner */}
+        </div>{/* /insights-panel */}
+
       </div>
     </div>
   );
